@@ -2,14 +2,24 @@
 gutenberg_essays.py — ingest essays from Project Gutenberg.
 
 Sources:
-  spectator  — The Spectator (Addison & Steele, 1711-1712), Gutenberg #12030
-  montaigne  — Essays of Montaigne (Florio translation), Gutenberg #3600
-  bacon      — Essays (Francis Bacon, 1625), Gutenberg #575
-  lamb       — Essays of Elia (Charles Lamb, 1823), Gutenberg #10343
+  spectator        — The Spectator (Addison & Steele, 1711-1712), #12030
+  montaigne        — Essays of Montaigne (Florio translation), #3600
+  bacon            — Essays (Francis Bacon, 1625), #575
+  lamb             — Essays of Elia (Charles Lamb, 1823), #10343
+  johnson          — The Rambler (Samuel Johnson, 1750), #43656 + #11397
+  mencken_1        — Prejudices: First Series (H.L. Mencken, 1919), #53538
+  mencken_2        — Prejudices: Second Series (H.L. Mencken, 1920), #53467
+  mencken_3        — Prejudices: Third Series (H.L. Mencken, 1922), #53474
+  mencken_5        — Prejudices: Fifth Series (H.L. Mencken, 1926), #72510
+  woolf            — The Common Reader (Virginia Woolf, 1925), #64457
+  chesterton_trifles    — Tremendous Trifles (G.K. Chesterton, 1909), #8092
+  chesterton_all_things — All Things Considered (G.K. Chesterton, 1908), #11505
+  russell          — Mysticism and Logic (Bertrand Russell, 1918), #25447
+  beerbohm_yet_again    — Yet Again (Max Beerbohm, 1909), #2292
 
 Usage:
-  python ingest/gutenberg_essays.py              # all four sources
-  python ingest/gutenberg_essays.py spectator    # one source
+  python ingest/gutenberg_essays.py              # all sources
+  python ingest/gutenberg_essays.py mencken_1    # one source
 """
 import re
 import sys
@@ -294,13 +304,172 @@ def ingest_johnson(texts: list[str]) -> tuple[int, int]:
     return added, skipped
 
 
+# ── Generic roman-numeral essay splitter ──────────────────────────────────────
+
+def ingest_roman_numeral_essays(
+    text: str, author: str, year: int, source_url: str, source_name: str = "Project Gutenberg"
+) -> tuple[int, int]:
+    """
+    Split on lines like:
+      I. ESSAY TITLE         (Mencken, Russell — all caps)
+      I. Essay Title         (Chesterton — title case)
+    Filters out TOC entries by requiring body > 150 words.
+    """
+    marker = re.compile(
+        r"^\s*([IVXLCDM]+)\.\s+([A-Z][A-Za-z\s,;:'\"!\-\(\)\.]+?)\s*$",
+        re.MULTILINE,
+    )
+    matches = list(marker.finditer(text))
+
+    candidates = []
+    for i, m in enumerate(matches):
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[body_start:body_end].strip()
+        if word_count(body) > 150:
+            candidates.append((m.group(2).strip().title(), clean_text(body)))
+
+    print(f"  Found {len(candidates)} essays")
+    added = skipped = 0
+    for title, body in candidates:
+        ok, _ = insert(title, author, year, body, source_url, source_name)
+        if ok:
+            added += 1
+        else:
+            skipped += 1
+    return added, skipped
+
+
+# ── Virginia Woolf — The Common Reader ────────────────────────────────────────
+
+def ingest_woolf(text: str) -> tuple[int, int]:
+    """
+    Essays are headed by _Italic Title_ lines (underscores = italics in PG plain text).
+    """
+    marker = re.compile(r"^_([^_\n]+?)_(?:\[\d+\])?\s*$", re.MULTILINE)
+    matches = list(marker.finditer(text))
+    print(f"  Found {len(matches)} Woolf essay markers")
+
+    candidates = []
+    for i, m in enumerate(matches):
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = clean_text(text[body_start:body_end])
+        title = m.group(1).strip()
+        # skip sub-section headings (TOC sub-entries like "I. The Taylors")
+        if re.match(r'^[IVX]+\.', title):
+            continue
+        if word_count(body) > 200:
+            candidates.append((title, body))
+
+    print(f"  {len(candidates)} essays after filtering")
+    added = skipped = 0
+    source_url = "https://www.gutenberg.org/ebooks/64457"
+    for title, body in candidates:
+        ok, _ = insert(title, "Virginia Woolf", 1925, body, source_url, "Project Gutenberg")
+        if ok:
+            added += 1
+        else:
+            skipped += 1
+    return added, skipped
+
+
+# ── Max Beerbohm — Yet Again ───────────────────────────────────────────────────
+
+def ingest_beerbohm_yet_again(text: str) -> tuple[int, int]:
+    """ALL-CAPS title lines, same structure as Lamb's Essays of Elia."""
+    # Find where essays begin (after CONTENTS section)
+    contents_end = text.find("THE FIRE\n")
+    if contents_end != -1:
+        # Skip past the CONTENTS listing to the actual first essay
+        second = text.find("THE FIRE\n", contents_end + 1)
+        if second != -1:
+            text = text[second:]
+
+    title_pat = re.compile(r"^([A-Z][A-Z\s,';:\-\"\.!]{5,}[A-Z])$", re.MULTILINE)
+    matches = list(title_pat.finditer(text))
+    skip = {"CONTENTS", "YET AGAIN", "WORDS FOR PICTURES"}
+    matches = [m for m in matches if m.group(1).strip() not in skip]
+    print(f"  Found {len(matches)} Beerbohm essay titles")
+
+    added = skipped = 0
+    source_url = "https://www.gutenberg.org/ebooks/2292"
+    for i, m in enumerate(matches):
+        title = m.group(1).strip().title()
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = clean_text(text[body_start:body_end])
+        ok, _ = insert(title, "Max Beerbohm", 1909, body, source_url, "Project Gutenberg")
+        if ok:
+            added += 1
+        else:
+            skipped += 1
+    return added, skipped
+
+
+# ── G.K. Chesterton — All Things Considered ───────────────────────────────────
+
+def _ingest_chesterton_all_things(text: str) -> tuple[int, int]:
+    """ALL-CAPS essay titles, e.g. 'THE CASE FOR THE EPHEMERAL'."""
+    title_pat = re.compile(r"^([A-Z][A-Z\s,';:\-\"\.!]{5,}[A-Z])$", re.MULTILINE)
+    matches = list(title_pat.finditer(text))
+    skip = {"CONTENTS", "ALL THINGS CONSIDERED"}
+    matches = [m for m in matches if m.group(1).strip() not in skip]
+    print(f"  Found {len(matches)} essay titles")
+
+    added = skipped = 0
+    source_url = "https://www.gutenberg.org/ebooks/11505"
+    for i, m in enumerate(matches):
+        title = m.group(1).strip().title()
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = clean_text(text[body_start:body_end])
+        ok, _ = insert(title, "G.K. Chesterton", 1908, body, source_url, "Project Gutenberg")
+        if ok:
+            added += 1
+        else:
+            skipped += 1
+    return added, skipped
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
+def _mencken_fn(vol, year, gid):
+    def fn(text):
+        return ingest_roman_numeral_essays(
+            text, "H.L. Mencken", year,
+            f"https://www.gutenberg.org/ebooks/{gid}"
+        )
+    return fn
+
+def _chesterton_fn(year, gid):
+    def fn(text):
+        return ingest_roman_numeral_essays(
+            text, "G.K. Chesterton", year,
+            f"https://www.gutenberg.org/ebooks/{gid}"
+        )
+    return fn
+
+def _russell_fn(text):
+    return ingest_roman_numeral_essays(
+        text, "Bertrand Russell", 1918,
+        "https://www.gutenberg.org/ebooks/25447"
+    )
+
 SOURCES = {
-    "spectator": (12030, "The Spectator", ingest_spectator),
-    "montaigne": (3600,  "Montaigne's Essays", ingest_montaigne),
-    "bacon":     (575,   "Bacon's Essays", ingest_bacon),
-    "lamb":      (10343, "Essays of Elia", ingest_lamb),
+    "spectator":              (12030, "The Spectator",                    ingest_spectator),
+    "montaigne":              (3600,  "Montaigne's Essays",               ingest_montaigne),
+    "bacon":                  (575,   "Bacon's Essays",                   ingest_bacon),
+    "lamb":                   (10343, "Essays of Elia",                   ingest_lamb),
+    "mencken_1":              (53538, "Prejudices: First Series",         _mencken_fn(1, 1919, 53538)),
+    "mencken_2":              (53467, "Prejudices: Second Series",        _mencken_fn(2, 1920, 53467)),
+    "mencken_3":              (53474, "Prejudices: Third Series",         _mencken_fn(3, 1922, 53474)),
+    "mencken_5":              (72510, "Prejudices: Fifth Series",         _mencken_fn(5, 1926, 72510)),
+    "woolf":                  (64457, "The Common Reader",                ingest_woolf),
+    "chesterton_trifles":     (8092,  "Tremendous Trifles",              _chesterton_fn(1909, 8092)),
+    "chesterton_all_things":  (11505, "All Things Considered",           _ingest_chesterton_all_things),
+    "russell":                (25447, "Mysticism and Logic",              _russell_fn),
+    "beerbohm_yet_again":     (2292,  "Yet Again",                       ingest_beerbohm_yet_again),
     # johnson handled specially (two volumes)
 }
 
@@ -341,13 +510,10 @@ def run(names: list[str]):
 
     counts = count_by_type()
     print(f"\n{'='*50}")
-    print(f"{'Type':<12} {'Count':>8}  {'Target':>8}  {'Status'}")
+    print(f"{'Type':<12} {'Count':>8}")
     print(f"{'-'*50}")
-    targets = {"poem": 1000, "story": 1000, "essay": 1000}
-    for t, target in targets.items():
-        n = counts.get(t, 0)
-        status = "✓" if n >= target else f"{n/target*100:.0f}% of target"
-        print(f"{t:<12} {n:>8,}  {target:>8,}  {status}")
+    for t, n in sorted(counts.items()):
+        print(f"{t:<12} {n:>8,}")
     print(f"{'='*50}")
 
 
