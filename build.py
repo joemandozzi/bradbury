@@ -15,7 +15,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from corpus.db import init_db, count_by_type
-from picker import pick_for_date
+from picker import pick_for_date, reading_time_minutes
 
 
 # ── paths ──────────────────────────────────────────────────────────────────
@@ -66,6 +66,7 @@ def build(target_date: date):
 
     triad = pick_for_date(target_date)
     date_display = target_date.strftime("%B %-d, %Y")  # e.g. "June 10, 2026"
+    read_time    = reading_time_minutes(triad)
 
     # Render the day page.
     day_tmpl = env.get_template("day.html")
@@ -73,6 +74,7 @@ def build(target_date: date):
         root="",
         date_iso=target_date.isoformat(),
         date_display=date_display,
+        read_time=read_time,
         story=triad.get("story"),
         poem=triad.get("poem"),
         essay=triad.get("essay"),
@@ -86,6 +88,7 @@ def build(target_date: date):
         root="../",
         date_iso=target_date.isoformat(),
         date_display=date_display,
+        read_time=read_time,
         story=triad.get("story"),
         poem=triad.get("poem"),
         essay=triad.get("essay"),
@@ -97,9 +100,9 @@ def build(target_date: date):
     (SITE / "about.html").write_text(about_html, encoding="utf-8")
 
     print(f"Built site/ for {date_display}")
-    print(f"  story : {triad['story'].title if triad.get('story') else 'none'}")
-    print(f"  poem  : {triad['poem'].title  if triad.get('poem')  else 'none'}")
-    print(f"  essay : {triad['essay'].title if triad.get('essay') else 'none'}")
+    print(f"  story : {triad['story']['title'] if triad.get('story') else 'none'}")
+    print(f"  poem  : {triad['poem']['title']  if triad.get('poem')  else 'none'}")
+    print(f"  essay : {triad['essay']['title'] if triad.get('essay') else 'none'}")
     print(f"Open: site/index.html")
 
 

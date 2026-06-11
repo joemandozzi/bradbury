@@ -20,6 +20,9 @@
   --color-muted: #6b6b6b;
   --color-accent: #8b4513;   /* warm saddle-brown, Bradbury-ish */
   --color-border: #e5e0d8;
+  --color-story:  #b26137;
+  --color-poem:   #3d6ea8;
+  --color-essay:  #468a6b;
 
   /* Spacing */
   --space-xs: 0.5rem;
@@ -37,6 +40,9 @@
     --color-muted: #9e9889;
     --color-accent: #c8855a;
     --color-border: #2e2b24;
+    --color-story:  #cc8052;
+    --color-poem:   #6694c7;
+    --color-essay:  #61a687;
   }
 }
 
@@ -165,6 +171,9 @@ main {
   color: var(--color-accent);
   margin-bottom: var(--space-xs);
 }
+.work--story .work-type  { color: var(--color-story); }
+.work--poem  .work-type  { color: var(--color-poem);  }
+.work--essay .work-type  { color: var(--color-essay); }
 
 .work-title {
   font-size: var(--size-2xl);
