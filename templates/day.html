@@ -4,7 +4,7 @@
 {% block og_title %}{{ date_display }} — 1,000 Nights{% endblock %}
 
 {% block content %}
-<section class="day-header">
+<section class="day-header" data-date="{{ date_iso }}">
   <h1 class="day-date">{{ date_display }}</h1>
   <p class="day-read-time">~{{ read_time }} min read tonight</p>
   <div class="streak-display" id="streak-display">
