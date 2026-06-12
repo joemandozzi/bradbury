@@ -1,37 +1,127 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ date_display }} — 1,000 Nights</title>
+  <meta name="description" content="One short story, one poem, and one essay — every night for 1,000 nights. All public domain.">
+  <meta property="og:site_name" content="1,000 Nights">
+  <meta property="og:title" content="{{ date_display }} — 1,000 Nights">
+  <meta property="og:description" content="One short story, one poem, and one essay — every night for 1,000 nights. All public domain.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ root }}static/style.css">
+</head>
+<body class="day-page">
 
-{% block title %}{{ date_display }} — 1,000 Nights{% endblock %}
-{% block og_title %}{{ date_display }} — 1,000 Nights{% endblock %}
+  <!-- ════════════════════════════════════════════
+       LANDING — blue, full-screen overlay
+  ════════════════════════════════════════════ -->
+  <div class="landing" id="landing">
+    <header class="landing-header">
+      <div class="landing-brand">
+        <div class="landing-wordmark">1,000 NIGHTS</div>
+        <div class="landing-date">{{ date_display | upper }}</div>
+      </div>
+      <div class="landing-right">
+        <div class="landing-streak-pill" id="landing-streak-pill">
+          <span id="landing-streak-text"></span>
+        </div>
+        <a href="{{ root }}about.html" class="landing-about">ABOUT</a>
+      </div>
+    </header>
 
-{% block content %}
-<section class="day-header" data-date="{{ date_iso }}">
-  <h1 class="day-date">{{ date_display }}</h1>
-  <p class="day-read-time">~{{ read_time }} min read tonight</p>
-  <div class="streak-display" id="streak-display">
-    <!-- JS fills this in from localStorage -->
+    <nav class="landing-nav" aria-label="Select reading type">
+      <button class="landing-tab" data-format="poem">POEM</button>
+      <button class="landing-tab" data-format="essay">ESSAY</button>
+      <button class="landing-tab" data-format="story">STORY</button>
+    </nav>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-inner">
+        <span>READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · </span>
+        <span>READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · READ BETTER · WRITE BETTER · </span>
+      </div>
+    </div>
   </div>
-  <button class="mark-read-btn" id="mark-read-btn">Mark tonight complete</button>
-</section>
 
-{% for work in [story, poem, essay] %}
-{% if work %}
-<article class="work work--{{ work.type }}">
-  <header class="work-header">
-    <span class="work-type">{{ work.type | title }}</span>
-    <h2 class="work-title">{{ work.title }}</h2>
-    <p class="work-byline">{{ work.author }}{% if work.year %} · {{ work.year }}{% endif %}</p>
-    <p class="work-meta">{{ work.word_count | default(0) | int | wordcount_label }}</p>
-  </header>
-  <div class="work-text">
-    {{ work.text | nl2br }}
+  <!-- ════════════════════════════════════════════
+       READER — cream, normal page flow
+  ════════════════════════════════════════════ -->
+  <div class="reader" id="reader">
+    <div class="reader-inner">
+      <header class="reader-header" data-date="{{ date_iso }}">
+        <div class="reader-date">{{ date_display }}</div>
+        <div class="reader-readtime">~{{ read_time }} min read tonight</div>
+      </header>
+
+      <div class="reader-streak-row">
+        <span class="streak-display" id="streak-display"></span>
+        <button class="mark-read-btn" id="mark-read-btn">Mark tonight complete</button>
+      </div>
+
+      <nav class="reader-tabs" aria-label="Content type">
+        <button class="reader-tab" data-format="story">Story</button>
+        <button class="reader-tab" data-format="poem">Poem</button>
+        <button class="reader-tab" data-format="essay">Essay</button>
+      </nav>
+
+      <div class="reader-works">
+
+        {% if story %}
+        <article class="work work--story" id="work-story">
+          <header class="work-header">
+            <span class="work-badge work-badge--story">Story</span>
+            <h2 class="work-title">{{ story.title }}</h2>
+            <p class="work-byline">{{ story.author }}{% if story.year %} · {{ story.year }}{% endif %} · {{ story.word_count | default(0) | int | wordcount_label }}</p>
+          </header>
+          <div class="work-text">{{ story.text | nl2br }}</div>
+          {% if story.source_url %}
+          <footer class="work-source">
+            <a href="{{ story.source_url }}" target="_blank" rel="noopener">Source</a>{% if story.source_name %} · {{ story.source_name }}{% endif %}
+          </footer>
+          {% endif %}
+        </article>
+        {% endif %}
+
+        {% if poem %}
+        <article class="work work--poem" id="work-poem">
+          <header class="work-header">
+            <span class="work-badge work-badge--poem">Poem</span>
+            <h2 class="work-title">{{ poem.title }}</h2>
+            <p class="work-byline">{{ poem.author }}{% if poem.year %} · {{ poem.year }}{% endif %} · {{ poem.word_count | default(0) | int | wordcount_label }}</p>
+          </header>
+          <div class="work-text work-text--poem">{{ poem.text | nl2br }}</div>
+          {% if poem.source_url %}
+          <footer class="work-source">
+            <a href="{{ poem.source_url }}" target="_blank" rel="noopener">Source</a>{% if poem.source_name %} · {{ poem.source_name }}{% endif %}
+          </footer>
+          {% endif %}
+        </article>
+        {% endif %}
+
+        {% if essay %}
+        <article class="work work--essay" id="work-essay">
+          <header class="work-header">
+            <span class="work-badge work-badge--essay">Essay</span>
+            <h2 class="work-title">{{ essay.title }}</h2>
+            <p class="work-byline">{{ essay.author }}{% if essay.year %} · {{ essay.year }}{% endif %} · {{ essay.word_count | default(0) | int | wordcount_label }}</p>
+          </header>
+          <div class="work-text">{{ essay.text | nl2br }}</div>
+          {% if essay.source_url %}
+          <footer class="work-source">
+            <a href="{{ essay.source_url }}" target="_blank" rel="noopener">Source</a>{% if essay.source_name %} · {{ essay.source_name }}{% endif %}
+          </footer>
+          {% endif %}
+        </article>
+        {% endif %}
+
+      </div>
+    </div>
   </div>
-  {% if work.source_url %}
-  <footer class="work-source">
-    <a href="{{ work.source_url }}" target="_blank" rel="noopener">Source</a>
-    {% if work.source_name %} · {{ work.source_name }}{% endif %}
-  </footer>
-  {% endif %}
-</article>
-{% endif %}
-{% endfor %}
-{% endblock %}
+
+  <script src="{{ root }}static/streak.js"></script>
+</body>
+</html>

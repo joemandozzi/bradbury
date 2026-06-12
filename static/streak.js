@@ -1,28 +1,29 @@
 /**
- * Streak counter — the only JavaScript on this site.
+ * Bradbury — streak + tab switching
  *
- * State stored in localStorage:
- *   bradbury_streak      : number  — current consecutive-night count
- *   bradbury_last_read   : string  — ISO date of last completed night ("2026-06-10")
+ * On the day page (body.day-page):
+ *   - Populates the landing streak pill from localStorage
+ *   - Handles landing tab clicks → fades to reader with selected format active
+ *   - Handles reader tab clicks → fades between works
+ *   - Manages the "Mark tonight complete" button + streak counter
  *
- * A "night" is marked complete when the user clicks the button on any given
- * calendar date. Clicking again on the same date is a no-op (idempotent).
- * Missing a day resets the streak to 1 on the next read night.
+ * On other pages (about, etc.): no-op except for streak display if present.
+ *
+ * Streak state in localStorage:
+ *   bradbury_streak    : number — current consecutive-night count
+ *   bradbury_last_read : string — ISO date of last completed night
  */
-
 (function () {
-  const STREAK_KEY = "bradbury_streak";
-  const LAST_KEY   = "bradbury_last_read";
+  var STREAK_KEY = "bradbury_streak";
+  var LAST_KEY   = "bradbury_last_read";
 
+  /* ── helpers ──────────────────────────────────────────── */
   function today() {
-    // Use the date embedded in the page so the streak aligns with the
-    // server-side date even if the visitor is in a different timezone.
-    const el = document.querySelector("[data-date]");
+    var el = document.querySelector("[data-date]");
     return el ? el.dataset.date : new Date().toISOString().slice(0, 10);
   }
 
   function daysBetween(a, b) {
-    // Both are ISO strings "YYYY-MM-DD". Returns integer days (b - a).
     return Math.round((new Date(b) - new Date(a)) / 86400000);
   }
 
@@ -33,53 +34,148 @@
     };
   }
 
-  function renderStreak(streak) {
-    const el = document.getElementById("streak-display");
-    if (!el) return;
-    if (streak === 0) {
-      el.textContent = "Start your 1,000 nights tonight.";
-    } else {
-      el.textContent = `Night ${streak} of 1,000`;
-    }
-  }
-
   function markRead() {
-    const t = today();
-    const { streak, last } = getState();
+    var t = today();
+    var state = getState();
+    if (state.last === t) return;
 
-    if (last === t) return; // already marked today
-
-    let newStreak;
-    if (!last) {
-      newStreak = 1;
-    } else {
-      const gap = daysBetween(last, t);
-      newStreak = gap === 1 ? streak + 1 : 1; // consecutive = +1, gap = reset
-    }
+    var newStreak = (!state.last)
+      ? 1
+      : (daysBetween(state.last, t) === 1 ? state.streak + 1 : 1);
 
     localStorage.setItem(STREAK_KEY, String(newStreak));
     localStorage.setItem(LAST_KEY, t);
-    renderStreak(newStreak);
+    renderReaderStreak(newStreak);
 
-    const btn = document.getElementById("mark-read-btn");
-    if (btn) {
-      btn.textContent = "✓ Night complete";
-      btn.disabled = true;
-    }
+    var btn = document.getElementById("mark-read-btn");
+    if (btn) { btn.textContent = "✓ Night complete"; btn.disabled = true; }
   }
 
-  // On load: show current streak and disable button if already read today.
-  document.addEventListener("DOMContentLoaded", function () {
-    const { streak, last } = getState();
-    renderStreak(streak);
+  function renderReaderStreak(streak) {
+    var el = document.getElementById("streak-display");
+    if (!el) return;
+    el.textContent = streak > 0
+      ? "🔥 " + streak + " night streak"
+      : "Start your 1,000 nights tonight.";
+  }
 
-    const btn = document.getElementById("mark-read-btn");
+  /* ── landing ──────────────────────────────────────────── */
+  function initLanding() {
+    var state = getState();
+
+    if (state.streak > 0) {
+      var pill = document.getElementById("landing-streak-pill");
+      var text = document.getElementById("landing-streak-text");
+      if (pill && text) {
+        text.textContent = state.streak + " NIGHT STREAK";
+        pill.style.display = "block";
+      }
+    }
+
+    document.querySelectorAll(".landing-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        showReader(btn.dataset.format);
+      });
+    });
+  }
+
+  /* ── reader ───────────────────────────────────────────── */
+  var activeFormat = null;
+
+  function showReader(fmt) {
+    var landing = document.getElementById("landing");
+    var reader  = document.getElementById("reader");
+    if (!reader) return;
+
+    landing.style.opacity = "0";
+    landing.style.pointerEvents = "none";
+    setTimeout(function () {
+      landing.style.display = "none";
+      document.body.classList.add("reader-open");
+    }, 500);
+
+    reader.classList.add("is-visible");
+
+    var state = getState();
+    renderReaderStreak(state.streak);
+
+    var btn = document.getElementById("mark-read-btn");
     if (btn) {
-      if (last === today()) {
+      if (state.last === today()) {
         btn.textContent = "✓ Night complete";
         btn.disabled = true;
       } else {
         btn.addEventListener("click", markRead);
+      }
+    }
+
+    setFormat(fmt);
+  }
+
+  function setFormat(fmt) {
+    if (fmt === activeFormat) return;
+
+    var prev = activeFormat;
+    activeFormat = fmt;
+
+    document.querySelectorAll(".reader-tab").forEach(function (tab) {
+      tab.classList.toggle("is-active", tab.dataset.format === fmt);
+    });
+
+    var nextWork = document.getElementById("work-" + fmt);
+
+    if (prev) {
+      var prevWork = document.getElementById("work-" + prev);
+      if (prevWork) {
+        prevWork.style.opacity = "0";
+        setTimeout(function () {
+          prevWork.style.display = "none";
+          revealWork(nextWork);
+        }, 300);
+        return;
+      }
+    }
+
+    revealWork(nextWork);
+  }
+
+  function revealWork(el) {
+    if (!el) return;
+    el.style.display = "block";
+    el.style.opacity = "0";
+    /* double rAF ensures browser renders opacity:0 before transitioning to 1 */
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        el.style.opacity = "1";
+      });
+    });
+  }
+
+  function initReaderTabs() {
+    document.querySelectorAll(".reader-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        setFormat(btn.dataset.format);
+      });
+    });
+  }
+
+  /* ── init ─────────────────────────────────────────────── */
+  document.addEventListener("DOMContentLoaded", function () {
+    if (document.body.classList.contains("day-page")) {
+      initLanding();
+      initReaderTabs();
+    } else {
+      /* non-day pages: just handle streak display if elements exist */
+      var state = getState();
+      renderReaderStreak(state.streak);
+      var btn = document.getElementById("mark-read-btn");
+      if (btn) {
+        if (state.last === today()) {
+          btn.textContent = "✓ Night complete";
+          btn.disabled = true;
+        } else {
+          btn.addEventListener("click", markRead);
+        }
       }
     }
   });
