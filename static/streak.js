@@ -1,21 +1,23 @@
 /**
  * Bradbury — streak + tab switching
  *
- * On the day page (body.day-page):
- *   - Populates the landing streak pill from localStorage
- *   - Handles landing tab clicks → fades to reader with selected format active
- *   - Handles reader tab clicks → fades between works
- *   - Manages the "Mark tonight complete" button + streak counter
+ * Streak completes automatically when the user has visited all three content
+ * types (poem, essay, story) AND scrolled at least 80% down the page.
  *
- * On other pages (about, etc.): no-op except for streak display if present.
+ * On completion the reader streak pill fades in (first time) or stays visible
+ * (returning user), then its blue drop shadow pulses.
  *
  * Streak state in localStorage:
  *   bradbury_streak    : number — current consecutive-night count
  *   bradbury_last_read : string — ISO date of last completed night
  */
 (function () {
-  var STREAK_KEY = "bradbury_streak";
-  var LAST_KEY   = "bradbury_last_read";
+  var STREAK_KEY     = "bradbury_streak";
+  var LAST_KEY       = "bradbury_last_read";
+  var FORMATS_NEEDED = ["story", "poem", "essay"];
+
+  var visitedFormats = new Set();
+  var hasScrolled80  = false;
 
   /* ── helpers ──────────────────────────────────────────── */
   function today() {
@@ -34,6 +36,12 @@
     };
   }
 
+  function checkCompletion() {
+    if (getState().last === today()) return;
+    var allVisited = FORMATS_NEEDED.every(function (f) { return visitedFormats.has(f); });
+    if (allVisited && hasScrolled80) markRead();
+  }
+
   function markRead() {
     var t = today();
     var state = getState();
@@ -45,22 +53,58 @@
 
     localStorage.setItem(STREAK_KEY, String(newStreak));
     localStorage.setItem(LAST_KEY, t);
-    renderReaderStreak(newStreak);
-
-    var btn = document.getElementById("mark-read-btn");
-    if (btn) { btn.textContent = "✓ COMPLETE"; btn.disabled = true; }
+    renderLandingStreak(newStreak);
+    showReaderStreakAnimated(newStreak);
   }
 
+  /* ── streak pill rendering ────────────────────────────── */
   function renderReaderStreak(streak) {
     var pill = document.getElementById("reader-streak-pill");
     var text = document.getElementById("reader-streak-text");
     if (!pill || !text) return;
     if (streak > 0) {
       text.textContent = streak + " NIGHT STREAK";
-      pill.style.display = "block";
+      pill.style.transition = "none";
+      pill.style.opacity    = "1";
+      pill.style.display    = "block";
     } else {
       pill.style.display = "none";
+      pill.style.opacity = "0";
     }
+  }
+
+  function showReaderStreakAnimated(streak) {
+    var pill = document.getElementById("reader-streak-pill");
+    var text = document.getElementById("reader-streak-text");
+    if (!pill || !text) return;
+
+    text.textContent = streak + " NIGHT STREAK";
+
+    var alreadyVisible = pill.style.display === "block";
+
+    if (alreadyVisible) {
+      pulseStreakPill(pill);
+    } else {
+      pill.style.transition = "opacity 0.6s ease";
+      pill.style.opacity    = "0";
+      pill.style.display    = "block";
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          pill.style.opacity = "1";
+          setTimeout(function () { pulseStreakPill(pill); }, 650);
+        });
+      });
+    }
+  }
+
+  function pulseStreakPill(pill) {
+    pill.classList.remove("reader-streak-pill--pulse");
+    void pill.offsetWidth; /* restart animation */
+    pill.classList.add("reader-streak-pill--pulse");
+    pill.addEventListener("animationend", function onEnd() {
+      pill.classList.remove("reader-streak-pill--pulse");
+      pill.removeEventListener("animationend", onEnd);
+    });
   }
 
   function renderLandingStreak(streak) {
@@ -68,7 +112,7 @@
     var text = document.getElementById("landing-streak-text");
     if (!pill || !text) return;
     if (streak > 0) {
-      text.textContent = streak + " NIGHT STREAK";
+      text.textContent  = streak + " NIGHT STREAK";
       pill.style.display = "block";
     } else {
       pill.style.display = "none";
@@ -77,8 +121,7 @@
 
   /* ── landing ──────────────────────────────────────────── */
   function initLanding() {
-    var state = getState();
-    renderLandingStreak(state.streak);
+    renderLandingStreak(getState().streak);
 
     document.querySelectorAll(".landing-tab").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -108,16 +151,6 @@
     renderReaderStreak(state.streak);
     renderLandingStreak(state.streak);
 
-    var btn = document.getElementById("mark-read-btn");
-    if (btn) {
-      if (state.last === today()) {
-        btn.textContent = "✓ Night complete";
-        btn.disabled = true;
-      } else {
-        btn.addEventListener("click", markRead);
-      }
-    }
-
     setFormat(fmt);
   }
 
@@ -126,6 +159,9 @@
 
     var prev = activeFormat;
     activeFormat = fmt;
+
+    visitedFormats.add(fmt);
+    checkCompletion();
 
     document.querySelectorAll(".reader-tab").forEach(function (tab) {
       tab.classList.toggle("is-active", tab.dataset.format === fmt);
@@ -152,7 +188,6 @@
     if (!el) return;
     el.style.display = "block";
     el.style.opacity = "0";
-    /* double rAF ensures browser renders opacity:0 before transitioning to 1 */
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         el.style.opacity = "1";
@@ -168,24 +203,26 @@
     });
   }
 
+  function initScrollTracking() {
+    window.addEventListener("scroll", function () {
+      if (hasScrolled80) return;
+      var scrolled = window.scrollY + window.innerHeight;
+      var total    = document.documentElement.scrollHeight;
+      if (scrolled / total >= 0.8) {
+        hasScrolled80 = true;
+        checkCompletion();
+      }
+    }, { passive: true });
+  }
+
   /* ── init ─────────────────────────────────────────────── */
   document.addEventListener("DOMContentLoaded", function () {
     if (document.body.classList.contains("day-page")) {
       initLanding();
       initReaderTabs();
+      initScrollTracking();
     } else {
-      /* non-day pages: just handle streak display if elements exist */
-      var state = getState();
-      renderReaderStreak(state.streak);
-      var btn = document.getElementById("mark-read-btn");
-      if (btn) {
-        if (state.last === today()) {
-          btn.textContent = "✓ Night complete";
-          btn.disabled = true;
-        } else {
-          btn.addEventListener("click", markRead);
-        }
-      }
+      renderReaderStreak(getState().streak);
     }
   });
 })();
