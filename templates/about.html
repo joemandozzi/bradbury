@@ -1,37 +1,49 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — 1,000 Nights</title>
+  <meta name="description" content="One short story, one poem, and one essay — every night for 1,000 nights. All public domain.">
+  <meta property="og:site_name" content="1,000 Nights">
+  <meta property="og:title" content="About — 1,000 Nights">
+  <meta property="og:description" content="One short story, one poem, and one essay — every night for 1,000 nights. All public domain.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ root }}static/style.css">
+</head>
+<body class="about-page">
 
-{% block title %}About — 1,000 Nights{% endblock %}
+  <header class="about-header">
+    <a href="{{ root }}index.html" class="about-wordmark">1,000 Nights</a>
+    <span class="about-nav-label">About</span>
+  </header>
 
-{% block content %}
-<article class="about">
-  <h1>About</h1>
-  <div class="about-body">
-    <div class="about-text">
-      <blockquote>
-        <p>Read one short story, one poem, and one essay every night for 1,000 nights.
-        At the end of 1,000 nights you will be full of images, ideas, and feelings.</p>
-        <cite>— Ray Bradbury</cite>
-      </blockquote>
-      <p>This site serves one carefully chosen public-domain short story, poem, and essay
-      each day. Every work is real — nothing is AI-generated. The selection is deterministic:
-      the same three works appear for every visitor on the same day.</p>
-      <p>All works are sourced from
-      <a href="https://www.gutenberg.org">Project Gutenberg</a>,
-      <a href="https://standardebooks.org">Standard Ebooks</a>, and
-      <a href="https://poetrydb.org">PoetryDB</a> — sources that have already verified
-      US public-domain status.</p>
-    </div>
-    <div class="about-video">
-      <div class="video-embed">
+  <main class="about-main">
+    <div class="about-media">
+      <div class="about-video-embed">
         <iframe
           src="https://www.youtube.com/embed/REOntvyroqQ?start=691"
-          title="Ray Bradbury"
+          title="Ray Bradbury on reading"
           frameborder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen>
         </iframe>
       </div>
     </div>
-  </div>
-</article>
-{% endblock %}
+    <div class="about-content">
+      <h1 class="about-heading">About This Project</h1>
+      <p class="about-body-text">In 1980, Ray Bradbury spoke to a group of students at Sherwood Oaks Experimental College on a panel about screenwriting. His advice to them was to read one short story, one poem, and one essay every night for 1,000 nights.</p>
+      <p class="about-body-text">This website was built by front-and-back-end duo Devon Lukasiewicz and Joe Mandozzi.</p>
+      <p class="about-source-text">All works are sourced from <a href="https://www.gutenberg.org" target="_blank" rel="noopener">Project Gutenberg</a>, <a href="https://standardebooks.org" target="_blank" rel="noopener">Standard Ebooks</a>, and <a href="https://poetrydb.org" target="_blank" rel="noopener">PoetryDB</a> — sources that have already verified US public-domain status. If you would like to support this project, please consider donating to these organizations.</p>
+    </div>
+  </main>
+
+  <footer class="about-footer">
+    <p>One short story, one poem, one essay — every night for 1,000 nights.</p>
+  </footer>
+
+</body>
+</html>

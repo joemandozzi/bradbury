@@ -21,7 +21,7 @@ MAX_MINUTES      = 60
 COMBINED_MAX     = WORDS_PER_MINUTE * MAX_MINUTES  # 12,000 words
 
 
-def _pick(rng: random.Random, pool: list, max_words: int) -> object | None:
+def _pick(rng: random.Random, pool: list, max_words: int):
     """
     Pick one work from pool weighted by inverse word count,
     constrained to works with word_count <= max_words.
@@ -47,7 +47,7 @@ def _get_pool(works: list) -> list:
     return unserved if unserved else list(works)
 
 
-def pick_for_date(target_date: date | None = None) -> dict:
+def pick_for_date(target_date=None) -> dict:
     """
     Returns {'story': Row, 'poem': Row, 'essay': Row} for the given date.
     Combined word count will not exceed COMBINED_MAX (12,000 words / 60 min).
