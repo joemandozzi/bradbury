@@ -1,3 +1,4 @@
+.env
 .venv/
 # corpus/bradbury.db  — committed; corpus is stable and CI needs it to build
 site/
