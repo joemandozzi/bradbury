@@ -394,7 +394,6 @@ body.about-page {
   height: 100%;
   display: block;
   pointer-events: none;
-  filter: drop-shadow(0px 40px 28px rgba(0, 0, 0, 0.22));
 }
 
 .about-heading {
