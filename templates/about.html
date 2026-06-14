@@ -16,6 +16,15 @@
 </head>
 <body class="about-page">
 
+  <!-- Clip-path definition: frame shape = full rect minus screen hole (even-odd) -->
+  <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <clipPath id="tv-frame-clip" clipPathUnits="objectBoundingBox">
+        <path fill-rule="evenodd" d="M0,0 H1 V1 H0 Z M0.2433,0.1584 H0.7821 V0.7736 H0.2433 Z"/>
+      </clipPath>
+    </defs>
+  </svg>
+
   <header class="reader-header">
     <div class="reader-brand">
       <a href="{{ root }}index.html" class="reader-wordmark about-wordmark-link">1,000 DAYS</a>
@@ -29,6 +38,7 @@
   <main class="about-main">
     <div class="about-media">
       <div class="tv-container">
+        <div class="tv-backing"></div>
         <div class="tv-screen">
           <div id="about-player"></div>
         </div>

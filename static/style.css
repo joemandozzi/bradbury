@@ -355,10 +355,23 @@ body.about-page {
 }
 
 /* TV frame + video overlay */
+.about-media {
+  overflow: hidden;
+}
+
 .tv-container {
   position: relative;
   width: 100%;
   aspect-ratio: 863 / 486;
+  transform: scale(1.22);
+  transform-origin: right center;
+}
+
+.tv-backing {
+  position: absolute;
+  inset: 0;
+  background: #0d0805;
+  clip-path: url(#tv-frame-clip);
 }
 
 .tv-screen {
@@ -436,7 +449,7 @@ body.about-page {
 }
 
 .about-footer a {
-  color: #000;
+  color: #002AFF;
   text-decoration: none;
 }
 
