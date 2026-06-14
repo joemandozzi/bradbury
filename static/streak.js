@@ -133,6 +133,27 @@
   /* ── reader ───────────────────────────────────────────── */
   var activeFormat = null;
 
+  function showLanding() {
+    var landing = document.getElementById("landing");
+    var reader  = document.getElementById("reader");
+    if (!landing || !reader) return;
+
+    reader.classList.remove("is-visible");
+    document.body.classList.remove("reader-open");
+
+    landing.style.display      = "flex";
+    landing.style.pointerEvents = "";
+    landing.style.opacity      = "0";
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        landing.style.opacity = "1";
+      });
+    });
+
+    window.scrollTo(0, 0);
+    activeFormat = null;
+  }
+
   function showReader(fmt) {
     var landing = document.getElementById("landing");
     var reader  = document.getElementById("reader");
@@ -201,6 +222,23 @@
         setFormat(btn.dataset.format);
       });
     });
+
+    // Clicking the wordmark returns to the landing
+    var wordmark = document.querySelector("#reader .reader-wordmark");
+    if (wordmark) {
+      wordmark.style.cursor = "pointer";
+      wordmark.addEventListener("click", showLanding);
+    }
+
+    // Clicking the nav background (outside any tab) returns to the landing
+    var readerNav = document.querySelector(".reader-nav");
+    if (readerNav) {
+      readerNav.addEventListener("click", function (e) {
+        if (!e.target.closest(".reader-tab")) {
+          showLanding();
+        }
+      });
+    }
   }
 
   function initScrollTracking() {
